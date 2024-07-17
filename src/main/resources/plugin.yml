@@ -1,0 +1,20 @@
+name: FrameMine
+version: '${project.version}'
+main: ch.framedev.framemine.main.Main
+api-version: '1.21'
+
+commands:
+  mine:
+    description: 'FrameMine Setup'
+    permission: 'framemine.admin'
+    aliases:
+      - framemine
+
+permissions:
+  framemine.*:
+    children:
+      framemine.admin: true
+
+  framemine.admin:
+    description: 'Allows access to all FrameMine admin commands'
+    default: op
