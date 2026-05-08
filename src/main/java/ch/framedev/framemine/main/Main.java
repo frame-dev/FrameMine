@@ -1,5 +1,7 @@
 package ch.framedev.framemine.main;
 
+import org.bukkit.ChatColor;
+import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
@@ -20,6 +22,8 @@ public final class Main extends JavaPlugin {
     public void onEnable() {
         instance = this;
         saveDefaultConfig();
+        getConfig().options().copyDefaults(true);
+        saveConfig();
         if (getCommand("mine") == null) {
             getLogger().severe("Command 'mine' is missing from plugin.yml. Disabling FrameMine.");
             getServer().getPluginManager().disablePlugin(this);
@@ -89,6 +93,38 @@ public final class Main extends JavaPlugin {
     }
 
     public String getPrefix() {
-        return "§7[§bFrameMine§7] §c» §7";
+        return color(getConfig().getString("settings.prefix", "&7[&bFrameMine&7] &c» &7"));
+    }
+
+    public String getToolName() {
+        return color(getConfig().getString("settings.position-tool-name", "&aMine Positioning Tool"));
+    }
+
+    public void sendMessage(CommandSender sender, String path, String... placeholders) {
+        String message = getMessage(path, placeholders);
+        if (message.isEmpty()) {
+            return;
+        }
+
+        for (String line : message.split("\\\\n|\\n")) {
+            sender.sendMessage(line);
+        }
+    }
+
+    public String getMessage(String path, String... placeholders) {
+        String message = getConfig().getString("messages." + path, "");
+        if (message == null || message.isEmpty()) {
+            return "";
+        }
+
+        message = message.replace("{prefix}", getPrefix());
+        for (int i = 0; i + 1 < placeholders.length; i += 2) {
+            message = message.replace("{" + placeholders[i] + "}", placeholders[i + 1]);
+        }
+        return color(message);
+    }
+
+    public String color(String message) {
+        return ChatColor.translateAlternateColorCodes('&', message == null ? "" : message);
     }
 }

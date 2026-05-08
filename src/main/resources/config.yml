@@ -1,0 +1,71 @@
+settings:
+  prefix: "&7[&bFrameMine&7] &c» &7"
+  position-tool-name: "&aMine Positioning Tool"
+  default-reset-minutes: 5
+  log-reset-messages: true
+  log-next-reset: true
+
+messages:
+  only-players: "{prefix}This command can only be executed by players."
+  no-permission: "{prefix}You don't have permission to use this command."
+  usage-main: "{prefix}Usage: /mine <pos1|pos2|setup|addmaterial|setreset|setautostart|start|info|gui|help|tool|reload>"
+  usage-info: "{prefix}Usage: /mine info <mineName>"
+  usage-setautostart: "{prefix}Usage: /mine setautostart <mineName> <true|false>"
+  usage-addmaterial: "{prefix}Usage: /mine addmaterial <mineName> <material> <chance>"
+  usage-setreset: "{prefix}Usage: /mine setreset <mineName> <minutes>"
+  usage-start: "{prefix}Usage: /mine start <mineName>"
+  unknown-subcommand: "{prefix}Unknown subcommand. Use /mine help."
+  help: |-
+    &8--- &bFrameMine commands &8---
+    &b/mine tool &7- Get the positioning tool.
+    &b/mine pos1 &7- Set position 1 to your current location.
+    &b/mine pos2 &7- Set position 2 to your current location.
+    &b/mine setup <mineName> &7- Create and fill a mine.
+    &b/mine addmaterial <mineName> <material> <chance> &7- Add a weighted material.
+    &b/mine setreset <mineName> <minutes> &7- Set the reset interval.
+    &b/mine setautostart <mineName> <true|false> &7- Toggle startup resets.
+    &b/mine start <mineName> &7- Start the reset task.
+    &b/mine info <mineName> &7- Show mine information.
+    &b/mine gui &7- Open the setup GUI.
+    &b/mine reload &7- Reload the configuration and messages.
+  tool-given: "{prefix}&aUse left and right click to set the mine positions."
+  position-1-set: "{prefix}&aPosition 1 has been set."
+  position-2-set: "{prefix}&aPosition 2 has been set."
+  gui-opened: "{prefix}&aGUI opened."
+  config-reloaded: "{prefix}&aConfiguration reloaded."
+  enter-mine-name: "{prefix}&aEnter the mine name in chat."
+  mine-created: "{prefix}&aMine &b{mine} &ahas been created and filled with stone."
+  mine-selected: "{prefix}&aMine &b{mine} &ahas been selected."
+  mine-removed: "{prefix}&aMine &b{mine} &ahas been removed."
+  mine-not-found: "{prefix}&cMine not found."
+  no-mine-selected: "{prefix}&cNo mine selected."
+  no-material-selected: "{prefix}&cNo material selected."
+  missing-positions: "{prefix}&cYou need to set both positions first."
+  missing-positions-or-name: "{prefix}&cYou need to set both positions and provide a name."
+  mine-info: |-
+    {prefix}&bMine: &7{mine}
+    &bPosition 1: &7{pos1}
+    &bPosition 2: &7{pos2}
+    &bMaterials: &7{materials}
+    &bAutoStart: &7{autostart}
+    &bReset: &7{reset} minutes
+  material-added: "{prefix}&aAdded &b{material} &awith chance &b{chance} &ato mine &b{mine}&a."
+  material-removed: "{prefix}&aRemoved &b{material} &afrom the mine."
+  invalid-material: "{prefix}&cInvalid material."
+  invalid-material-or-chance: "{prefix}&cInvalid material or chance."
+  invalid-chance: "{prefix}&cInvalid chance. Please enter a valid number."
+  invalid-number: "{prefix}&cInvalid number."
+  chance-greater-than-zero: "{prefix}&cChance must be greater than 0."
+  chance-set: "{prefix}&aSet chance for &b{material} &ato &b{chance}%&a."
+  chance-halved: "{prefix}&aHalved the chance of &b{material}&a."
+  reset-set: "{prefix}&aReset time for &b{mine} &ahas been set to &b{reset} &aminutes."
+  invalid-interval: "{prefix}&cInvalid reset interval."
+  interval-greater-than-zero: "{prefix}&cReset interval must be greater than 0."
+  auto-reset-started: "{prefix}&aAuto-reset started for mine &b{mine}&a."
+  autostart-set: "{prefix}&aAutoStart for &b{mine} &ahas been set to &b{autostart}&a."
+  autostart-enabled: "{prefix}&aAuto-start has been enabled for &b{mine}&a."
+  autostart-disabled: "{prefix}&eAuto-start has been disabled for &b{mine}&e."
+  item-metadata-error: "{prefix}&cError: item metadata is missing."
+
+# Mines are saved here automatically.
+mine: {}

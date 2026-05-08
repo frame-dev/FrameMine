@@ -20,7 +20,7 @@ public class Mine {
     private boolean autoStart;
     private final Map<String, Double> materials;
     private final Random random;
-    private long reset = 5;
+    private long reset;
 
     public Mine(String mineName, Location pos1, Location pos2) {
         this.mineName = mineName;
@@ -28,6 +28,7 @@ public class Mine {
         this.pos2 = pos2;
         this.materials = new HashMap<>();
         this.random = new Random();
+        this.reset = Main.getInstance() == null ? 5 : Math.max(1, Main.getInstance().getConfig().getLong("settings.default-reset-minutes", 5));
     }
 
     public String getMineName() {
@@ -106,7 +107,9 @@ public class Mine {
         // Teleport players within the mine to the top
         teleportPlayerToTheTop(result.world, result.minX, result.minY, result.minZ, result.maxX, result.maxY, result.maxZ);
 
-        plugin.getLogger().info("Mine: " + mineName + " has been reset!");
+        if (plugin.getConfig().getBoolean("settings.log-reset-messages", true)) {
+            plugin.getLogger().info("Mine: " + mineName + " has been reset!");
+        }
     }
 
     private boolean isInside(Location loc, int minX, int maxX, int minY, int maxY, int minZ, int maxZ) {
@@ -175,7 +178,9 @@ public class Mine {
             public void run() {
                 fill();
                 long resetTime = System.currentTimeMillis() + (resetPeriodTicks * 50L);
-                plugin.getLogger().info("Next reset in " + new SimpleDateFormat("HH:mm:ss | dd.MM.yyyy").format(new Date(resetTime)));
+                if (plugin.getConfig().getBoolean("settings.log-next-reset", true)) {
+                    plugin.getLogger().info("Next reset in " + new SimpleDateFormat("HH:mm:ss | dd.MM.yyyy").format(new Date(resetTime)));
+                }
             }
         }.runTaskTimer(plugin, 0, resetPeriodTicks));
     }

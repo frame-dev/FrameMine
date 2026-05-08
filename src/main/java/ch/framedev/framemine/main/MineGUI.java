@@ -297,11 +297,11 @@ public class MineGUI implements Listener {
             if (mine != null) {
                 mine.removeMaterial(material);
                 mine.save();
-                player.sendMessage("Removed " + material.name() + " from the mine.");
+                plugin.sendMessage(player, "material-removed", "material", material.name());
                 currentMine = mine;
                 player.openInventory(createMaterialsGUI(mine));
             } else {
-                player.sendMessage("No mine selected.");
+                plugin.sendMessage(player, "no-mine-selected");
             }
             return;
         }
@@ -312,11 +312,11 @@ public class MineGUI implements Listener {
                 double currentChance = mine.getMaterials().getOrDefault(material.name(), 0.0);
                 mine.addMaterial(material, currentChance / 2); // Assuming you want to double the chance
                 mine.save();
-                player.sendMessage("Half the chance of " + material.name() + " in the mine.");
+                plugin.sendMessage(player, "chance-halved", "material", material.name());
                 player.openInventory(createMaterialsGUI(mine));
                 currentMine = mine;
             } else {
-                player.sendMessage("No mine selected.");
+                plugin.sendMessage(player, "no-mine-selected");
             }
         }
         if (event.getClick() == ClickType.MIDDLE) {
@@ -360,17 +360,17 @@ public class MineGUI implements Listener {
                         }
                         mine.addMaterial(material, newChance);
                         mine.save();
-                        player.sendMessage("Set chance for " + material.name() + " to " + newChance + "%");
+                        plugin.sendMessage(player, "chance-set", "material", material.name(), "chance", String.valueOf(newChance));
                         player.openInventory(fromMine ? createMaterialsGUI(mine) : createMineGUI());
                         fromMine = false;
                     } else {
-                        player.sendMessage("No mine selected.");
+                        plugin.sendMessage(player, "no-mine-selected");
                     }
                 } else {
-                    player.sendMessage("No material selected.");
+                    plugin.sendMessage(player, "no-material-selected");
                 }
             } catch (NumberFormatException e) {
-                player.sendMessage("Invalid Number");
+                plugin.sendMessage(player, "invalid-number");
             }
         } else {
             if (!itemName.endsWith("%")) {
@@ -391,14 +391,14 @@ public class MineGUI implements Listener {
             player.openInventory(createMineGUI());
         } else {
             if (currentMine == null) {
-                player.sendMessage("No mine selected.");
+                plugin.sendMessage(player, "no-mine-selected");
                 return;
             }
             String[] time = itemName.split(" ");
             long resetTime = Long.parseLong(time[0]);
             currentMine.setReset(resetTime);
             currentMine.save();
-            player.sendMessage("Reset time set to " + resetTime + " Minutes.");
+            plugin.sendMessage(player, "reset-set", "mine", currentMine.getMineName(), "reset", String.valueOf(resetTime));
         }
     }
 
@@ -412,12 +412,12 @@ public class MineGUI implements Listener {
         Inventory inventory = event.getClickedInventory();
         if (item == null || inventory == null) return;
         if (currentMine == null) {
-            player.sendMessage("No mine selected.");
+            plugin.sendMessage(player, "no-mine-selected");
             return;
         }
         Mine mine = Mine.loadMine(currentMine.getMineName());
         if (mine == null) {
-            player.sendMessage("Mine not found!");
+            plugin.sendMessage(player, "mine-not-found");
             return;
         }
         switch (itemName) {
@@ -446,14 +446,14 @@ public class MineGUI implements Listener {
                         inventory.setItem(event.getSlot(),
                                 createGuiItem(Material.BLAZE_ROD, "Autostart", false, "§cDisabled!",
                                         "§aTo Enable click it."));
-                        player.sendMessage("§6Auto-start has been disabled.");
+                        plugin.sendMessage(player, "autostart-disabled", "mine", mine.getMineName());
                     } else {
                         // If auto-start is disabled, enable it and update the inventory item
                         mine.setAutoStart(true);
                         inventory.setItem(event.getSlot(),
                                 createGuiItem(Material.BLAZE_ROD, "Autostart", true, "§6Enabled!",
                                         "§aTo Disable click it."));
-                        player.sendMessage("§6Auto-start has been enabled.");
+                        plugin.sendMessage(player, "autostart-enabled", "mine", mine.getMineName());
                     }
 
                     // Save the mine state
@@ -466,7 +466,7 @@ public class MineGUI implements Listener {
                     //noinspection UnstableApiUsage
                     player.updateInventory();
                 } else {
-                    player.sendMessage("§cError: Item does not have metadata.");
+                    plugin.sendMessage(player, "item-metadata-error");
                 }
                 break;
             case "Info":
@@ -474,7 +474,7 @@ public class MineGUI implements Listener {
                 break;
             case "Remove Mine":
                 mine.removeMine();
-                player.sendMessage(plugin.getPrefix() + "Mine has been removed!");
+                plugin.sendMessage(player, "mine-removed", "mine", mine.getMineName());
                 Sound levelUp = Utils.sound("ENTITY_PLAYER_LEVELUP", "LEVEL_UP");
                 if (levelUp != null) {
                     player.playSound(player.getLocation(), levelUp, 20, 1);
@@ -495,22 +495,22 @@ public class MineGUI implements Listener {
         switch (itemName) {
             case "Set Position 1":
                 plugin.getMineCMD().setPos1(player.getLocation());
-                player.sendMessage("Position 1 set.");
+                plugin.sendMessage(player, "position-1-set");
                 break;
             case "Set Position 2":
                 plugin.getMineCMD().setPos2(player.getLocation());
-                player.sendMessage("Position 2 set.");
+                plugin.sendMessage(player, "position-2-set");
                 break;
             case "Setup Mine":
                 if (plugin.getMineCMD().getPos1() != null && plugin.getMineCMD().getPos2() != null) {
-                    event.getWhoClicked().sendMessage("Enter the Mine Name in chat:");
+                    plugin.sendMessage(player, "enter-mine-name");
                     plugin.getChatListener().setWaitingForCreate(player);
                 } else {
-                    player.sendMessage("You need to set both positions.");
+                    plugin.sendMessage(player, "missing-positions");
                 }
                 break;
             case "Add Materials":
-                player.sendMessage("Enter the Mine Name in chat:");
+                plugin.sendMessage(player, "enter-mine-name");
                 plugin.getChatListener().setWaitingForMineName(player);
                 break;
             case "Mine Selection":
@@ -533,7 +533,7 @@ public class MineGUI implements Listener {
         Mine mine = Mine.loadMine(mineName);
         if (mine != null) {
             plugin.getMineGUI().setCurrentMine(mine);
-            player.sendMessage(mineName + " has been successfully selected!");
+            plugin.sendMessage(player, "mine-selected", "mine", mineName);
             player.openInventory(createMineGUI());
         }
     }
@@ -563,13 +563,13 @@ public class MineGUI implements Listener {
                 try {
                     selectedMaterial = Material.matchMaterial(materialName);
                     if (selectedMaterial == null) {
-                        player.sendMessage("Invalid material.");
+                        plugin.sendMessage(player, "invalid-material");
                         return;
                     }
                     fromMine = false;
                     player.openInventory(createChanceSelectionGUI());
                 } catch (IllegalArgumentException e) {
-                    player.sendMessage("Invalid material.");
+                    plugin.sendMessage(player, "invalid-material");
                 }
         }
     }

@@ -48,18 +48,25 @@ public class ChatListener implements Listener {
 
             try {
                 double chance = Double.parseDouble(message);
+                if (chance <= 0) {
+                    plugin.sendMessage(player, "chance-greater-than-zero");
+                    return;
+                }
                 Bukkit.getScheduler().runTask(plugin, () -> {
                     Mine mine = plugin.getMineGUI().getCurrentMine();
                     if (mine != null) {
                         mine.addMaterial(material, chance);
                         mine.save();
-                        player.sendMessage("Added " + material.name() + " with chance " + chance + " to the mine.");
+                        plugin.sendMessage(player, "material-added",
+                                "mine", mine.getMineName(),
+                                "material", material.name(),
+                                "chance", String.valueOf(chance));
                     } else {
-                        player.sendMessage("Error: No mine selected.");
+                        plugin.sendMessage(player, "no-mine-selected");
                     }
                 });
             } catch (NumberFormatException e) {
-                player.sendMessage("Invalid chance. Please enter a valid number.");
+                plugin.sendMessage(player, "invalid-chance");
             }
             return;
         }
@@ -72,13 +79,13 @@ public class ChatListener implements Listener {
             String finalMineName = mineName;
             Bukkit.getScheduler().runTask(plugin, () -> {
                 if (plugin.getMineCMD().getPos1() == null || plugin.getMineCMD().getPos2() == null) {
-                    player.sendMessage("You need to set both positions.");
+                    plugin.sendMessage(player, "missing-positions");
                     return;
                 }
                 Mine mine = new Mine(finalMineName, plugin.getMineCMD().getPos1(), plugin.getMineCMD().getPos2());
                 mine.fillStone();
                 mine.save();
-                player.sendMessage("Mine setup and filled with stone.");
+                plugin.sendMessage(player, "mine-created", "mine", finalMineName);
             });
             return;
         }
@@ -91,7 +98,11 @@ public class ChatListener implements Listener {
             Bukkit.getScheduler().runTask(plugin, () -> {
                 Mine mine = Mine.loadMine(finalMineName);
                 plugin.getMineGUI().setCurrentMine(mine);
-                player.sendMessage(mine == null ? "Mine not found." : finalMineName + " has been selected.");
+                if (mine == null) {
+                    plugin.sendMessage(player, "mine-not-found");
+                } else {
+                    plugin.sendMessage(player, "mine-selected", "mine", finalMineName);
+                }
             });
         }
     }

@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 
 public class MineCMD implements CommandExecutor, TabCompleter {
 
-    private static final List<String> SUBCOMMANDS = Arrays.asList("pos1", "pos2", "setup", "addmaterial", "setreset", "setautostart", "start", "info", "gui", "help", "tool");
+    private static final List<String> SUBCOMMANDS = Arrays.asList("pos1", "pos2", "setup", "addmaterial", "setreset", "setautostart", "start", "info", "gui", "help", "tool", "reload");
     private static final List<String> MATERIAL_NAMES = Arrays.stream(Material.values())
             .filter(material -> material != Material.AIR)
             .filter(Utils::isItem)
@@ -42,25 +42,25 @@ public class MineCMD implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage(plugin.getPrefix() + "This command can only be executed by players.");
+            plugin.sendMessage(sender, "only-players");
             return true;
         }
         Player player = (Player) sender;
         if(!player.hasPermission("framemine.admin")) {
-            player.sendMessage(plugin.getPrefix() + "You don't have permission to use this command.");
+            plugin.sendMessage(player, "no-permission");
             return true;
         }
 
         if (args.length == 0) {
-            player.sendMessage(plugin.getPrefix() + "Usage: /mine <pos1|pos2|setup|addmaterial|setreset|setautostart|start|info|gui|help|tool>");
+            plugin.sendMessage(player, "usage-main");
             return true;
         }
 
         if(args[0].equalsIgnoreCase("tool")) {
             player.getInventory().addItem(new ItemBuilder(Material.STICK)
                     .addEnchantment(Utils.enchantment("INFINITY", "ARROW_INFINITE"), 1, true).hideEnchantments()
-                    .setDisplayName("§aMine Positioning Tool").build());
-            player.sendMessage(plugin.getPrefix() + "§aUse Left and Right Click to set the Positions!");
+                    .setDisplayName(plugin.getToolName()).build());
+            plugin.sendMessage(player, "tool-given");
             return true;
         }
 
@@ -69,21 +69,29 @@ public class MineCMD implements CommandExecutor, TabCompleter {
             return true;
         }
 
+        if(args[0].equalsIgnoreCase("reload")) {
+            plugin.reloadConfig();
+            plugin.getConfig().options().copyDefaults(true);
+            plugin.saveConfig();
+            plugin.sendMessage(player, "config-reloaded");
+            return true;
+        }
+
         if (args[0].equalsIgnoreCase("pos1")) {
             pos1 = player.getLocation();
-            player.sendMessage("Position 1 set.");
+            plugin.sendMessage(player, "position-1-set");
             return true;
         }
 
         if (args[0].equalsIgnoreCase("pos2")) {
             pos2 = player.getLocation();
-            player.sendMessage("Position 2 set.");
+            plugin.sendMessage(player, "position-2-set");
             return true;
         }
 
         if(args[0].equalsIgnoreCase("gui")) {
             player.openInventory(plugin.getMineGUI().createMineSetupGUI());
-            player.sendMessage("GUI opened.");
+            plugin.sendMessage(player, "gui-opened");
             return true;
         }
 
@@ -92,10 +100,10 @@ public class MineCMD implements CommandExecutor, TabCompleter {
                 Mine mine = new Mine(args[1], pos1, pos2);
                 mine.fillStone();
                 mine.save();
-                player.sendMessage(plugin.getPrefix() + "Mine setup and filled with stone.");
+                plugin.sendMessage(player, "mine-created", "mine", args[1]);
                 return true;
             }
-            player.sendMessage(plugin.getPrefix() + "You need to set both positions and provide a name.");
+            plugin.sendMessage(player, "missing-positions-or-name");
             return true;
         }
 
@@ -104,41 +112,42 @@ public class MineCMD implements CommandExecutor, TabCompleter {
                 String mineName = args[1];
                 Mine mine = Mine.loadMine(mineName);
                 if(mine != null) {
-                    player.sendMessage("Name: " + mine.getMineName());
-                    player.sendMessage("Position 1: " + Utils.locationToString(mine.getPos1()));
-                    player.sendMessage("Position 2: " + Utils.locationToString(mine.getPos2()));
-                    player.sendMessage("Materials: " + Utils.formatMaterialsMap(mine.getMaterials()));
-                    player.sendMessage("AutoStart: " + mine.isAutoStart());
-                    player.sendMessage("Reset: " + mine.getReset() + " Minutes");
+                    plugin.sendMessage(player, "mine-info",
+                            "mine", mine.getMineName(),
+                            "pos1", Utils.locationToString(mine.getPos1()),
+                            "pos2", Utils.locationToString(mine.getPos2()),
+                            "materials", Utils.formatMaterialsMap(mine.getMaterials()),
+                            "autostart", String.valueOf(mine.isAutoStart()),
+                            "reset", String.valueOf(mine.getReset()));
                 } else {
-                    player.sendMessage("Mine not found.");
+                    plugin.sendMessage(player, "mine-not-found");
                 }
                 return true;
             }
-            player.sendMessage(plugin.getPrefix() + "Usage: /mine info <mineName>");
+            plugin.sendMessage(player, "usage-info");
             return true;
         }
 
         if(args[0].equalsIgnoreCase("setautostart")) {
             if(args.length == 3) {
                 if (!args[2].equalsIgnoreCase("true") && !args[2].equalsIgnoreCase("false")) {
-                    player.sendMessage(plugin.getPrefix() + "Usage: /mine setautostart <mineName> <true|false>");
+                    plugin.sendMessage(player, "usage-setautostart");
                     return true;
                 }
 
                 boolean autoStart = Boolean.parseBoolean(args[2]);
-                Mine mine = Mine.loadMine(args[1]);
+                    Mine mine = Mine.loadMine(args[1]);
                 if(mine != null) {
                     mine.setAutoStart(autoStart);
                     mine.save();
-                    player.sendMessage("AutoStart set to " + autoStart + ".");
+                    plugin.sendMessage(player, "autostart-set", "mine", args[1], "autostart", String.valueOf(autoStart));
                     return true;
                 } else {
-                    player.sendMessage("Mine not found.");
+                    plugin.sendMessage(player, "mine-not-found");
                 }
                 return true;
             }
-            player.sendMessage(plugin.getPrefix() + "Usage: /mine setautostart <mineName> <true|false>");
+            plugin.sendMessage(player, "usage-setautostart");
             return true;
         }
 
@@ -149,27 +158,27 @@ public class MineCMD implements CommandExecutor, TabCompleter {
                     try {
                         Material material = Material.matchMaterial(args[2]);
                         if (material == null) {
-                            player.sendMessage("Invalid material.");
+                            plugin.sendMessage(player, "invalid-material");
                             return true;
                         }
                         double chance = Double.parseDouble(args[3]);
                         if (chance <= 0) {
-                            player.sendMessage("Chance must be greater than 0.");
+                            plugin.sendMessage(player, "chance-greater-than-zero");
                             return true;
                         }
                         mine.addMaterial(material, chance);
                         mine.save();
-                        player.sendMessage("Material added to mine.");
+                        plugin.sendMessage(player, "material-added", "mine", args[1], "material", material.name(), "chance", String.valueOf(chance));
                         return true;
                     } catch (IllegalArgumentException e) {
-                        player.sendMessage("Invalid material or chance.");
+                        plugin.sendMessage(player, "invalid-material-or-chance");
                         return true;
                     }
                 }
-                player.sendMessage("Mine not found.");
+                plugin.sendMessage(player, "mine-not-found");
                 return true;
             }
-            player.sendMessage(plugin.getPrefix() + "Usage: /mine addmaterial <mineName> <material> <chance>");
+            plugin.sendMessage(player, "usage-addmaterial");
             return true;
         }
 
@@ -180,22 +189,22 @@ public class MineCMD implements CommandExecutor, TabCompleter {
                     try {
                         long interval = Long.parseLong(args[2]);
                         if (interval <= 0) {
-                            player.sendMessage("Interval must be greater than 0.");
+                            plugin.sendMessage(player, "interval-greater-than-zero");
                             return true;
                         }
                         mine.setReset(interval);
                         mine.save();
-                        player.sendMessage("Reset interval set for mine.");
+                        plugin.sendMessage(player, "reset-set", "mine", args[1], "reset", String.valueOf(interval));
                         return true;
                     } catch (NumberFormatException e) {
-                        player.sendMessage("Invalid interval.");
+                        plugin.sendMessage(player, "invalid-interval");
                         return true;
                     }
                 }
-                player.sendMessage("Mine not found.");
+                plugin.sendMessage(player, "mine-not-found");
                 return true;
             }
-            player.sendMessage(plugin.getPrefix() + "Usage: /mine setreset <mineName> <interval>");
+            plugin.sendMessage(player, "usage-setreset");
             return true;
         }
 
@@ -204,33 +213,22 @@ public class MineCMD implements CommandExecutor, TabCompleter {
                 Mine mine = Mine.loadMine(args[1]);
                 if (mine != null) {
                     mine.startAutoReset(plugin);
-                    player.sendMessage("Auto-reset started for mine.");
+                    plugin.sendMessage(player, "auto-reset-started", "mine", args[1]);
                     return true;
                 }
-                player.sendMessage("Mine not found.");
+                plugin.sendMessage(player, "mine-not-found");
                 return true;
             }
-            player.sendMessage(plugin.getPrefix() + "Usage: /mine start <mineName>");
+            plugin.sendMessage(player, "usage-start");
             return true;
         }
 
-        player.sendMessage(plugin.getPrefix() + "Unknown subcommand. Use /mine help.");
+        plugin.sendMessage(player, "unknown-subcommand");
         return true;
     }
 
     private void sendHelp(Player player) {
-        player.sendMessage("--- FrameMine commands ---");
-        player.sendMessage("/mine <pos1|pos2|setup|addmaterial|setreset|setautostart|start|info|gui|tool> [args]");
-        player.sendMessage("tool: left and right click for position to set");
-        player.sendMessage("pos1: Sets position 1 for the mine.");
-        player.sendMessage("pos2: Sets position 2 for the mine.");
-        player.sendMessage("setup: Creates a new mine with given name.");
-        player.sendMessage("addmaterial <mineName> <material> <chance>: Adds a new material to the mine.");
-        player.sendMessage("setreset <mineName> <interval>: Sets the interval for auto-reset.");
-        player.sendMessage("setautostart <mineName> <true|false>: Toggles auto-start for the mine.");
-        player.sendMessage("start <mineName>: Starts the auto-reset for the given mine.");
-        player.sendMessage("info <mineName>: Shows information about the given mine.");
-        player.sendMessage("gui: Opens the GUI for creating and managing mines.");
+        plugin.sendMessage(player, "help");
     }
 
     public void setPos1(Location pos1) {

@@ -75,6 +75,7 @@ Available subcommands:
 | `/mine setautostart <mineName> <true\|false>` | Enables or disables automatic startup resets for a mine. |
 | `/mine start <mineName>` | Starts the auto-reset task for a mine. |
 | `/mine gui` | Opens the main setup GUI. |
+| `/mine reload` | Reloads `config.yml`, including configurable messages. |
 
 ### Material Chances
 
@@ -154,11 +155,22 @@ Controls:
 
 ## Configuration
 
-The generated `config.yml` may start empty. Mines are saved automatically under the `mine` section after setup.
+The generated `config.yml` contains plugin settings, configurable messages, and saved mine data. Mines are saved automatically under the `mine` section after setup.
 
 Example structure:
 
 ```yaml
+settings:
+  prefix: "&7[&bFrameMine&7] &c» &7"
+  position-tool-name: "&aMine Positioning Tool"
+  default-reset-minutes: 5
+  log-reset-messages: true
+  log-next-reset: true
+
+messages:
+  mine-not-found: "{prefix}&cMine not found."
+  mine-created: "{prefix}&aMine &b{mine} &ahas been created and filled with stone."
+
 mine:
   exampleMine:
     name: exampleMine
@@ -176,6 +188,12 @@ Field meanings:
 
 | Field | Description |
 | --- | --- |
+| `settings.prefix` | Prefix used by configurable messages. |
+| `settings.position-tool-name` | Display name for the mine selection tool. |
+| `settings.default-reset-minutes` | Default reset interval for newly-created mines. |
+| `settings.log-reset-messages` | Enables reset completion logs in console. |
+| `settings.log-next-reset` | Enables next-reset-time logs in console. |
+| `messages` | Player-facing message templates. Supports color codes with `&`. |
 | `name` | Saved mine name. |
 | `pos1` | First corner location. |
 | `pos2` | Second corner location. |
@@ -193,6 +211,30 @@ The loader also accepts semicolon-separated values for compatibility:
 
 ```text
 world;x;y;z;yaw;pitch
+```
+
+### Configurable Messages
+
+Every player-facing command/chat feedback message is loaded from `messages`.
+
+Supported common placeholders:
+
+| Placeholder | Meaning |
+| --- | --- |
+| `{prefix}` | Configured plugin prefix. |
+| `{mine}` | Mine name. |
+| `{material}` | Material name. |
+| `{chance}` | Material chance/weight. |
+| `{reset}` | Reset interval in minutes. |
+| `{autostart}` | `true` or `false`. |
+| `{pos1}` | First saved mine position. |
+| `{pos2}` | Second saved mine position. |
+| `{materials}` | Formatted material list. |
+
+After editing messages or settings, reload them in game:
+
+```text
+/mine reload
 ```
 
 ## Building From Source

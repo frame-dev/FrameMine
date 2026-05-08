@@ -21,16 +21,16 @@ public class PositionListener implements Listener {
         ItemStack item = event.getItem();
         if (item == null || item.getType() == Material.AIR || !item.hasItemMeta() || item.getItemMeta() == null || !item.getItemMeta().hasDisplayName()) return;
 
-        if (item.getItemMeta().getDisplayName().equalsIgnoreCase("§aMine Positioning Tool")) {
+        if (item.getItemMeta().getDisplayName().equalsIgnoreCase(plugin.getToolName())) {
             event.setCancelled(true);
             if (event.getClickedBlock() == null || event.getClickedBlock().getType() == Material.AIR) return;
 
             if (event.getAction() == Action.LEFT_CLICK_BLOCK) {
                 plugin.getMineCMD().setPos1(event.getClickedBlock().getLocation());
-                event.getPlayer().sendMessage("Position 1 set.");
+                plugin.sendMessage(event.getPlayer(), "position-1-set");
             } else if (event.getAction() == Action.RIGHT_CLICK_BLOCK) {
                 plugin.getMineCMD().setPos2(event.getClickedBlock().getLocation());
-                event.getPlayer().sendMessage("Position 2 set.");
+                plugin.sendMessage(event.getPlayer(), "position-2-set");
             }
         }
     }
