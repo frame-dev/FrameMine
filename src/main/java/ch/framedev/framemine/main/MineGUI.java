@@ -1,18 +1,8 @@
 package ch.framedev.framemine.main;
 
-/*
- * ch.framedev.framemine.main
- * =============================================
- * This File was Created by FrameDev
- * Please do not change anything without my consent!
- * =============================================
- * This Class was created at 14.07.2024 20:21
- */
-
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.Sound;
-import org.bukkit.enchantments.Enchantment;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -24,10 +14,23 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 public class MineGUI implements Listener {
+
+    private static final int ITEMS_PER_PAGE = 45;
+    private static final List<Material> SELECTABLE_MATERIALS = Arrays.stream(Material.values())
+            .filter(material -> material != Material.AIR)
+            .filter(Utils::isItem)
+            .collect(Collectors.toList());
+    private static final double[] CHANCES = {
+            0.015, 0.05, 0.10, 0.25, 0.50, 0.75, 1.0, 1.25, 1.5,
+            1.75, 2.0, 2.5, 5.0, 7.5, 10.0, 25.0, 30.0, 50.0, 60.0, 75.0, 100.0
+    };
 
     private final Main plugin;
     private Mine currentMine;
@@ -71,22 +74,19 @@ public class MineGUI implements Listener {
     public Inventory createAddMaterialsGUI(int page) {
         Inventory gui = Bukkit.createInventory(null, 54, "Add Materials - Page " + (page + 1));
 
-        // Get materials for this page
-        List<Material> materials = new ArrayList<>(List.of(Material.values()));
-        // 5 rows for items, 1 row for navigation
-        final int ITEMS_PER_PAGE = 45;
         int startIndex = page * ITEMS_PER_PAGE;
-        int endIndex = Math.min(startIndex + ITEMS_PER_PAGE, materials.size());
+        int endIndex = Math.min(startIndex + ITEMS_PER_PAGE, SELECTABLE_MATERIALS.size());
 
         for (int i = startIndex; i < endIndex; i++) {
-            gui.setItem(i - startIndex, createGuiItem(materials.get(i), materials.get(i).name()));
+            Material material = SELECTABLE_MATERIALS.get(i);
+            gui.setItem(i - startIndex, createGuiItem(material, material.name()));
         }
 
         // Navigation items
         if (page > 0) {
             gui.setItem(45, createGuiItem(Material.ARROW, "Previous Page"));
         }
-        if (endIndex < materials.size()) {
+        if (endIndex < SELECTABLE_MATERIALS.size()) {
             gui.setItem(53, createGuiItem(Material.ARROW, "Next Page"));
         }
 
@@ -114,13 +114,13 @@ public class MineGUI implements Listener {
         gui.setItem(10, createGuiItem(Material.CHEST, "Materials"));
         gui.setItem(12, createGuiItem(Material.STONE, "Add Materials"));
         gui.setItem(14, createGuiItem(Material.DIAMOND_ORE, "Start"));
-        gui.setItem(16, createGuiItem(Material.CLOCK, "Reset Time"));
+        gui.setItem(16, createGuiItem(Utils.material("CLOCK", "WATCH"), "Reset Time"));
         if (currentMine != null && currentMine.isAutoStart()) {
             gui.setItem(20, createGuiItem(Material.BLAZE_ROD, "Autostart", true, "§6Enabled!", "§aTo Disable click it."));
         } else {
             gui.setItem(20, createGuiItem(Material.BLAZE_ROD, "Autostart", false, "§cDisabled!", "§aTo Enable click it."));
         }
-        gui.setItem(22, createGuiItem(Material.COARSE_DIRT, "Remove Mine"));
+        gui.setItem(22, createGuiItem(Utils.material("COARSE_DIRT", "DIRT"), "Remove Mine"));
         gui.setItem(24, createGuiItem(Material.BEACON, "Info"));
 
         gui.setItem(31, createGuiItem(Material.BARRIER, "Back"));
@@ -129,8 +129,12 @@ public class MineGUI implements Listener {
 
     public Inventory createMaterialsGUI(Mine mine) {
         Inventory gui = Bukkit.createInventory(null, 54, "Materials");
-        for (String material : Utils.sortByValue(mine.getMaterials()).keySet())
-            gui.addItem(createGuiItem(Material.getMaterial(material), material + " - " + mine.getMaterials().get(material)));
+        for (String material : Utils.sortByValue(mine.getMaterials()).keySet()) {
+            Material bukkitMaterial = Material.matchMaterial(material);
+            if (bukkitMaterial != null) {
+                gui.addItem(createGuiItem(bukkitMaterial, material + " - " + mine.getMaterials().get(material)));
+            }
+        }
 
         gui.setItem(49, createGuiItem(Material.BARRIER, "Back"));
         return gui;
@@ -139,7 +143,7 @@ public class MineGUI implements Listener {
     public Inventory createResetTimeGUI() {
         Inventory gui = Bukkit.createInventory(null, 54, "Reset Time");
 
-        gui.setItem(10, createGuiItem(Material.CLOCK, "1 Minute"));
+        gui.setItem(10, createGuiItem(Utils.material("CLOCK", "WATCH"), "1 Minute"));
         gui.setItem(12, createGuiItem(Material.DIAMOND_BLOCK, "5 Minutes"));
         gui.setItem(14, createGuiItem(Material.DIAMOND_BLOCK, "10 Minutes"));
         gui.setItem(16, createGuiItem(Material.DIAMOND_BLOCK, "15 Minutes"));
@@ -157,13 +161,8 @@ public class MineGUI implements Listener {
     public Inventory createChanceSelectionGUI() {
         Inventory gui = Bukkit.createInventory(null, 4 * 9, "Select Chance");
 
-        // Predefined chance values
-        double[] chances = {0.015, 0.05, 0.10, 0.25, 0.50, 0.75, 1.0, 1.25, 1.5,
-                1.75, 2.0, 2.5, 5.0, 7.5, 10.0, 25.0, 30.0, 50.0, 60.0, 75.0, 100.0};
-
-        // Populate the GUI with chance items
-        for (int i = 1; i < chances.length; i++) {
-            gui.setItem(i, createGuiItem(Material.PAPER, chances[i - 1] + "%"));
+        for (int i = 0; i < CHANCES.length; i++) {
+            gui.setItem(i + 1, createGuiItem(Material.PAPER, CHANCES[i] + "%"));
         }
 
         gui.setItem(gui.getSize() - 4, createGuiItem(Material.DIAMOND, "Set Chance"));
@@ -182,14 +181,14 @@ public class MineGUI implements Listener {
         for (Map.Entry<String, Double> entry : currentMine.getMaterials().entrySet()) {
             materials.add("§6" + entry.getKey() + "§c:§b" + entry.getValue() + "%" + "\n");
         }
-        gui.setItem(12, createGuiItem(Material.CHAIN_COMMAND_BLOCK, "Location 1",
+        gui.setItem(12, createGuiItem(Utils.material("CHAIN_COMMAND_BLOCK", "COMMAND"), "Location 1",
                 Utils.locationToPrettyList(currentMine.getPos1())));
-        gui.setItem(14, createGuiItem(Material.CHAIN_COMMAND_BLOCK, "Location 2",
+        gui.setItem(14, createGuiItem(Utils.material("CHAIN_COMMAND_BLOCK", "COMMAND"), "Location 2",
                 Utils.locationToPrettyList(currentMine.getPos2())));
         gui.setItem(16, createGuiItem(Material.CHEST, "Mine Materials", materials));
-        gui.setItem(19, createGuiItem(Material.CLOCK, "Reset Time", false,
+        gui.setItem(19, createGuiItem(Utils.material("CLOCK", "WATCH"), "Reset Time", false,
                 "Reset Time : " + currentMine.getReset()));
-        gui.setItem(21, createGuiItem(Material.BLACKSTONE, "Autostart", false,
+        gui.setItem(21, createGuiItem(Utils.material("BLACKSTONE", "STONE"), "Autostart", false,
                 "Autostart : " + currentMine.isAutoStart()));
 
         gui.setItem(49, createGuiItem(Material.BARRIER, "Back"));
@@ -198,6 +197,9 @@ public class MineGUI implements Listener {
 
 
     private ItemStack createGuiItem(Material material, String name) {
+        if (material == null) {
+            material = Material.STONE;
+        }
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
@@ -208,16 +210,21 @@ public class MineGUI implements Listener {
     }
 
     private ItemStack createGuiItem(Material material, String name, boolean enchanted, String... lore) {
+        if (material == null) {
+            material = Material.STONE;
+        }
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(name);
-            meta.setLore(List.of(lore));
+            meta.setLore(Arrays.asList(lore));
             if (enchanted) {
-                meta.addEnchant(Enchantment.INFINITY, 1, false);
+                if (Utils.enchantment("INFINITY", "ARROW_INFINITE") != null) {
+                    meta.addEnchant(Utils.enchantment("INFINITY", "ARROW_INFINITE"), 1, false);
+                }
                 meta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
             } else {
-                meta.removeEnchantments();
+                new ArrayList<>(meta.getEnchants().keySet()).forEach(meta::removeEnchant);
                 meta.removeItemFlags(ItemFlag.HIDE_ENCHANTS);
             }
             item.setItemMeta(meta);
@@ -226,11 +233,14 @@ public class MineGUI implements Listener {
     }
 
     private ItemStack createGuiItem(Material material, String name, List<String> lore) {
+        if (material == null) {
+            material = Material.STONE;
+        }
         ItemStack item = new ItemStack(material);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
             meta.setDisplayName(name);
-            meta.setLore(lore);
+            meta.setLore(lore == null ? Collections.emptyList() : lore);
             item.setItemMeta(meta);
         }
         return item;
@@ -280,6 +290,7 @@ public class MineGUI implements Listener {
 
         if (itemName.equalsIgnoreCase("Back")) {
             player.openInventory(createMineGUI());
+            return;
         }
         if (event.getClick() == ClickType.SHIFT_RIGHT) {
             Mine mine = currentMine;
@@ -350,6 +361,8 @@ public class MineGUI implements Listener {
                         mine.addMaterial(material, newChance);
                         mine.save();
                         player.sendMessage("Set chance for " + material.name() + " to " + newChance + "%");
+                        player.openInventory(fromMine ? createMaterialsGUI(mine) : createMineGUI());
+                        fromMine = false;
                     } else {
                         player.sendMessage("No mine selected.");
                     }
@@ -360,9 +373,11 @@ public class MineGUI implements Listener {
                 player.sendMessage("Invalid Number");
             }
         } else {
+            if (!itemName.endsWith("%")) {
+                return;
+            }
             chance = Double.parseDouble(itemName.replace("%", ""));
-            event.getClickedInventory().setItem(0, createGuiItem(Material.CHERRY_SIGN, "Current Chance: " + chance));
-            System.out.println(chance);
+            event.getClickedInventory().setItem(0, createGuiItem(Utils.material("CHERRY_SIGN", "OAK_SIGN", "SIGN"), "Current Chance: " + chance));
         }
     }
 
@@ -375,6 +390,10 @@ public class MineGUI implements Listener {
         if (itemName.equalsIgnoreCase("Back")) {
             player.openInventory(createMineGUI());
         } else {
+            if (currentMine == null) {
+                player.sendMessage("No mine selected.");
+                return;
+            }
             String[] time = itemName.split(" ");
             long resetTime = Long.parseLong(time[0]);
             currentMine.setReset(resetTime);
@@ -392,6 +411,10 @@ public class MineGUI implements Listener {
         ItemStack item = event.getCurrentItem();
         Inventory inventory = event.getClickedInventory();
         if (item == null || inventory == null) return;
+        if (currentMine == null) {
+            player.sendMessage("No mine selected.");
+            return;
+        }
         Mine mine = Mine.loadMine(currentMine.getMineName());
         if (mine == null) {
             player.sendMessage("Mine not found!");
@@ -405,13 +428,10 @@ public class MineGUI implements Listener {
                 player.openInventory(createMaterialsGUI(mine));
                 break;
             case "Add Materials":
+                fromMine = false;
                 player.openInventory(createAddMaterialsGUI(0));
                 break;
             case "Start":
-                if (Main.tasks.containsKey(mine.getMineName())) {
-                    Main.tasks.get(mine.getMineName()).cancel();
-                    Main.tasks.remove(mine.getMineName());
-                }
                 mine.startAutoReset(plugin);
                 break;
             case "Reset Time":
@@ -455,7 +475,10 @@ public class MineGUI implements Listener {
             case "Remove Mine":
                 mine.removeMine();
                 player.sendMessage(plugin.getPrefix() + "Mine has been removed!");
-                player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 20, 1);
+                Sound levelUp = Utils.sound("ENTITY_PLAYER_LEVELUP", "LEVEL_UP");
+                if (levelUp != null) {
+                    player.playSound(player.getLocation(), levelUp, 20, 1);
+                }
                 player.openInventory(createSelectionMineGUI());
                 break;
         }
@@ -504,6 +527,7 @@ public class MineGUI implements Listener {
         String mineName = event.getCurrentItem().getItemMeta().getDisplayName();
         if (mineName.equalsIgnoreCase("Back")) {
             player.openInventory(createMineSetupGUI());
+            return;
         }
 
         Mine mine = Mine.loadMine(mineName);
@@ -537,7 +561,12 @@ public class MineGUI implements Listener {
                 break;
             default:
                 try {
-                    selectedMaterial = Material.valueOf(materialName);
+                    selectedMaterial = Material.matchMaterial(materialName);
+                    if (selectedMaterial == null) {
+                        player.sendMessage("Invalid material.");
+                        return;
+                    }
+                    fromMine = false;
                     player.openInventory(createChanceSelectionGUI());
                 } catch (IllegalArgumentException e) {
                     player.sendMessage("Invalid material.");

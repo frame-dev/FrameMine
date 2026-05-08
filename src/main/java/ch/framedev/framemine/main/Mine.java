@@ -3,11 +3,10 @@ package ch.framedev.framemine.main;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -19,11 +18,11 @@ public class Mine {
     private final Location pos1;
     private final Location pos2;
     private boolean autoStart;
-    private Map<String, Double> materials;
+    private final Map<String, Double> materials;
     private final Random random;
     private long reset = 5;
 
-    public Mine(@NotNull String mineName, Location pos1, Location pos2) {
+    public Mine(String mineName, Location pos1, Location pos2) {
         this.mineName = mineName;
         this.pos1 = pos1;
         this.pos2 = pos2;
@@ -64,20 +63,23 @@ public class Mine {
     }
 
     public void removeMaterial(Material material) {
+        if (material == null) return;
         materials.remove(material.name());
     }
 
     public void addMaterial(Material material, double chance) {
+        if (material == null || chance <= 0) return;
         materials.put(material.name(), chance);
     }
 
     public Mine addMaterials(Map<String, Double> newMaterials) {
+        if (newMaterials == null) return this;
         materials.putAll(newMaterials);
         return this;
     }
 
     public void save() {
-        // Save mine data to a file or database
+        if (plugin == null || mineName == null || pos1 == null || pos2 == null) return;
         plugin.getConfig().set("mine." + mineName + ".name", mineName);
         plugin.getConfig().set("mine." + mineName + ".pos1", Utils.locationToString(pos1));
         plugin.getConfig().set("mine." + mineName + ".pos2", Utils.locationToString(pos2));
@@ -129,26 +131,27 @@ public class Mine {
         teleportPlayerToTheTop(result.world, result.minX, result.minY, result.minZ, result.maxX, result.maxY, result.maxZ);
     }
 
-    private @Nullable Result getResult() {
+    private Result getResult() {
+        if (pos1 == null || pos2 == null) return null;
         World world = getWorld();
         if (world == null) return null;
-        int minX = getData()[0];
-        int minY = getData()[1];
-        int minZ = getData()[2];
-        int maxX = getData()[3];
-        int maxY = getData()[4];
-        int maxZ = getData()[5];
-        return new Result(world, minX, minY, minZ, maxX, maxY, maxZ);
+        int[] data = getData();
+        if (data == null) return null;
+        return new Result(world, data[0], data[1], data[2], data[3], data[4], data[5]);
     }
 
     private Material getRandomMaterial() {
         double total = materials.values().stream().mapToDouble(Double::doubleValue).sum();
+        if (total <= 0) {
+            return Material.STONE;
+        }
         double randomValue = random.nextDouble() * total;
         double cumulative = 0.0;
         for (Map.Entry<String, Double> entry : materials.entrySet()) {
             cumulative += entry.getValue();
             if (randomValue <= cumulative) {
-                return Material.valueOf(entry.getKey());
+                Material material = Material.matchMaterial(entry.getKey());
+                return material != null ? material : Material.STONE;
             }
         }
         return Material.STONE;  // Fallback
@@ -165,24 +168,25 @@ public class Mine {
     }
 
     public void startAutoReset(JavaPlugin plugin) {
-        long resetFromConfig = plugin.getConfig().getLong("mine." + mineName + ".reset");
-        Main.tasks.put(mineName, new BukkitRunnable() {
+        long resetFromConfig = Math.max(1, plugin.getConfig().getLong("mine." + mineName + ".reset", reset));
+        long resetPeriodTicks = 60L * 20L * resetFromConfig;
+        Main.registerResetTask(mineName, new BukkitRunnable() {
             @Override
             public void run() {
                 fill();
-                long start = System.currentTimeMillis();
-                long resetIntervalMillis = 60 * 20 * resetFromConfig * 50L; // Convert ticks to milliseconds (1 tick = 50 ms)
-                long resetTime = start + resetIntervalMillis;
+                long resetTime = System.currentTimeMillis() + (resetPeriodTicks * 50L);
                 plugin.getLogger().info("Next reset in " + new SimpleDateFormat("HH:mm:ss | dd.MM.yyyy").format(new Date(resetTime)));
             }
-        }.runTaskTimer(plugin, 0, 60 * 20 * resetFromConfig));
+        }.runTaskTimer(plugin, 0, resetPeriodTicks));
     }
 
     public World getWorld() {
+        if (pos1 == null) return null;
         return pos1.getWorld();
     }
 
     public int[] getData() {
+        if (pos1 == null || pos2 == null) return null;
         World world = getWorld();
         if (world == null) return null;
         int minX = Math.min(pos1.getBlockX(), pos2.getBlockX());
@@ -198,24 +202,41 @@ public class Mine {
         Main plugin = Main.getInstance();
         String name = plugin.getConfig().getString("mine." + mineName + ".name");
         if (name == null) return null;
-        Location pos1 = Utils.stringToLocation(Objects.requireNonNull(plugin.getConfig().getString("mine." + mineName + ".pos1")));
-        Location pos2 = Utils.stringToLocation(Objects.requireNonNull(plugin.getConfig().getString("mine." + mineName + ".pos2")));
+
+        String pos1String = plugin.getConfig().getString("mine." + mineName + ".pos1");
+        String pos2String = plugin.getConfig().getString("mine." + mineName + ".pos2");
+        if (pos1String == null || pos2String == null) {
+            plugin.getLogger().warning("Mine " + mineName + " is missing one or both positions.");
+            return null;
+        }
+
+        Location pos1 = Utils.stringToLocation(pos1String);
+        Location pos2 = Utils.stringToLocation(pos2String);
+        if (pos1 == null || pos2 == null) {
+            plugin.getLogger().warning("Mine " + mineName + " has invalid position data.");
+            return null;
+        }
+
         Map<String, Double> materials = new HashMap<>();
-        if (plugin.getConfig().getConfigurationSection("mine." + mineName + ".materials") != null)
-            for (String materialName : Objects.requireNonNull(plugin.getConfig().getConfigurationSection("mine." + mineName + ".materials")).getKeys(false)) {
-                materials.put(materialName, plugin.getConfig().getDouble("mine." + mineName + ".materials." + materialName));
+        ConfigurationSection materialSection = plugin.getConfig().getConfigurationSection("mine." + mineName + ".materials");
+        if (materialSection != null) {
+            for (String materialName : materialSection.getKeys(false)) {
+                if (Material.matchMaterial(materialName) != null) {
+                    materials.put(materialName, materialSection.getDouble(materialName));
+                } else {
+                    plugin.getLogger().warning("Mine " + mineName + " contains unknown material " + materialName + ".");
+                }
             }
+        }
+
         Mine mine = new Mine(name, pos1, pos2).addMaterials(materials);
-        if (mine.materials == null)
-            mine.materials = new HashMap<>();
         mine.setAutoStart(plugin.getConfig().getBoolean("mine." + mineName + ".autostart"));
-        mine.reset = plugin.getConfig().getLong("mine." + mineName + ".reset");
+        mine.reset = Math.max(1, plugin.getConfig().getLong("mine." + mineName + ".reset", mine.reset));
         return mine;
     }
 
     public void removeMine() {
-        Main.tasks.remove(this.mineName);
-        // Save mine data to a file or database
+        Main.cancelResetTask(mineName);
         plugin.getConfig().set("mine." + mineName, null);
         plugin.saveConfig();
     }

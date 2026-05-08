@@ -19,7 +19,7 @@ public class PositionListener implements Listener {
     @EventHandler
     public void onPlayerClick(PlayerInteractEvent event) {
         ItemStack item = event.getItem();
-        if (item == null || item.getType() == Material.AIR || !item.hasItemMeta() || item.getItemMeta() == null) return;
+        if (item == null || item.getType() == Material.AIR || !item.hasItemMeta() || item.getItemMeta() == null || !item.getItemMeta().hasDisplayName()) return;
 
         if (item.getItemMeta().getDisplayName().equalsIgnoreCase("§aMine Positioning Tool")) {
             event.setCancelled(true);

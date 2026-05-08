@@ -4,13 +4,13 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Objects;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class Main extends JavaPlugin {
 
-    public static HashMap<String, BukkitTask>  tasks = new HashMap<>();
+    private static final Map<String, BukkitTask> RESET_TASKS = new ConcurrentHashMap<>();
     private static Main instance;
     private MineCMD mineCMD;
     private MineGUI mineGUI;
@@ -20,6 +20,11 @@ public final class Main extends JavaPlugin {
     public void onEnable() {
         instance = this;
         saveDefaultConfig();
+        if (getCommand("mine") == null) {
+            getLogger().severe("Command 'mine' is missing from plugin.yml. Disabling FrameMine.");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
         mineCMD = new MineCMD(this);
         chatListener = new ChatListener(this);
         mineGUI = new MineGUI(this);
@@ -34,11 +39,28 @@ public final class Main extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        // Plugin shutdown logic
+        cancelAllResetTasks();
     }
 
     public static Main getInstance() {
         return instance;
+    }
+
+    public static void registerResetTask(String mineName, BukkitTask task) {
+        cancelResetTask(mineName);
+        RESET_TASKS.put(mineName, task);
+    }
+
+    public static void cancelResetTask(String mineName) {
+        BukkitTask task = RESET_TASKS.remove(mineName);
+        if (task != null) {
+            task.cancel();
+        }
+    }
+
+    private static void cancelAllResetTasks() {
+        RESET_TASKS.values().forEach(BukkitTask::cancel);
+        RESET_TASKS.clear();
     }
 
     public MineCMD getMineCMD() {
@@ -55,11 +77,14 @@ public final class Main extends JavaPlugin {
 
     public List<Mine> getMineList() {
         List<Mine> mines = new ArrayList<>();
-        if (getConfig().getConfigurationSection("mine") != null)
-            for (String mineName : Objects.requireNonNull(getConfig().getConfigurationSection("mine")).getKeys(false)) {
-                if (Mine.loadMine(mineName) != null)
-                    mines.add(Mine.loadMine(mineName));
+        if (getConfig().getConfigurationSection("mine") != null) {
+            for (String mineName : getConfig().getConfigurationSection("mine").getKeys(false)) {
+                Mine mine = Mine.loadMine(mineName);
+                if (mine != null) {
+                    mines.add(mine);
+                }
             }
+        }
         return mines;
     }
 

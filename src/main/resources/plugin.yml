@@ -1,7 +1,6 @@
 name: FrameMine
 version: '${project.version}'
 main: ch.framedev.framemine.main.Main
-api-version: '1.21'
 
 commands:
   mine:
